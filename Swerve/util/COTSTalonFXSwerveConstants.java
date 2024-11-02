@@ -4,7 +4,7 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.math.util.Units;
-import frc.robot.GANG_SHOW_CONSTANTS;
+import frc.robot.FenceConstants;
 
 /* Contains values and required settings for common COTS swerve modules. */
 public class COTSTalonFXSwerveConstants {
@@ -125,8 +125,9 @@ public class COTSTalonFXSwerveConstants {
         
                 /** (468 / 35) : 1 */
                 double angleGearRatio = ((468.0 / 35.0) / 1.0);
-        
-                double angleKP = GANG_SHOW_CONSTANTS.wheelTwistRate; // 1.0; // TODO: Make sure to select and tune the right motor when applying this code to other robots
+                
+                /** How fast to twist the wheels to a new direction, increase if changing direction is sluggish */
+                double angleKP = 15.0; // TODO: Make sure to select and tune the right motor when applying this code to other robots
                 double angleKI = 0.0;
                 double angleKD = 0.0;
         

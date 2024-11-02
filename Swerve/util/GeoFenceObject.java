@@ -92,6 +92,9 @@ public class GeoFenceObject
         public Translation2d dampMotion(Translation2d robotXY, Translation2d motionXY, double robotR)
         {
             // TODO: lock input to field coordinates
+
+            double distanceToEdgeX;
+            double distanceToEdgeY;
             
             if (!checkPosition(robotXY, robotR)) {return motionXY;}
             // orth. v. diagonal v. internal
@@ -103,24 +106,34 @@ public class GeoFenceObject
                 // TODO: Orthogonal compensation
                 // TODO: Diagonal compensation
             }
-            else
+            else    
             {
+                // Calculates distance to the relevant edge of the field
+                // Calculates edge position, and subtracts robot position + radius from edge position.
+
+                // Sets the motion in the relevant direction to the minimum of the current motion
+                // And the distance from the edge clamped between 0 and the edge buffer, and normalised to a maximum of 1.
+                // This ensures the motion in that direction does not go above the clamped + normalised distance from the edge, to cap speed.
                 if (motionX > 0)
-                {
-                    motionX *= (clamp((xLimit + xSize) - (robotXY.getX() + robotR), 0, buffer))/buffer;
+                {   
+                    distanceToEdgeX = (xLimit + xSize) - (robotXY.getX() + robotR); 
+                    motionX = Math.min(motionX, (clamp(distanceToEdgeX, 0, buffer)) / buffer);
                 }
                 else if (motionX < 0)
-                {
-                    motionX *= (clamp((robotXY.getX() - robotR) - (xLimit), 0, buffer))/buffer;
+                {   
+                    distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit);
+                    motionX = Math.max(motionX, (-clamp(distanceToEdgeX, 0, buffer)) / buffer);
                 }
 
                 if (motionY > 0)
-                {
-                    motionY *= (clamp((yLimit + ySize) - (robotXY.getY() + robotR), 0, buffer))/buffer;
+                {   
+                    distanceToEdgeY = (yLimit + ySize) - (robotXY.getY() + robotR);
+                    motionY = Math.min(motionY, (clamp(distanceToEdgeY, 0, buffer)) / buffer);
                 }
                 else if (motionY < 0)
-                {
-                    motionY *= (clamp((robotXY.getY() - robotR) - (yLimit), 0, buffer))/buffer;
+                {   
+                    distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit);
+                    motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
                 }
 
                 return new Translation2d(motionX, motionY);

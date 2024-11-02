@@ -14,7 +14,7 @@ import frc.lib.util.SwerveModuleConstants;
 
 import frc.lib.util.GeoFenceObject;
 import frc.lib.util.OdometryReadout;
-import frc.robot.GANG_SHOW_CONSTANTS;
+import frc.robot.FenceConstants;
 
 public final class Constants 
 {
@@ -22,31 +22,51 @@ public final class Constants
     public static final class ControllConstants
     {
         public static final double stickDeadband = 0.1;
-        public static final double speedMax = GANG_SHOW_CONSTANTS.maxSpeed;
-        public static final double speedBase = GANG_SHOW_CONSTANTS.baseSpeed;
-        public static final double speedMin = GANG_SHOW_CONSTANTS.minSpeed;
+        /** Maximum robot speed when accelerated, relative to maximum uncapped speed */
+        public static final double speedMax = 0.8;
+        /** Normal robot speed, relative to maximum uncapped speed */
+        public static final double speedBase = 0.5;
+        /** Minimum robot speed when braking, relative to maximum uncapped speed */
+        public static final double speedMin = 0.1;
         public static final double speedAngle = 5;
-        public static final double speedRot = GANG_SHOW_CONSTANTS.maxSpin; // 0.02 for angle chasing version
+        /** Maximum robot rotation speed */
+        public static final double speedRot = 1.3; // 0.02 for angle chasing version
         
         
     }
     
     public final class GeoFencing
-    {
-        public static final GeoFenceObject GANG_SHOW_STAGE = new GeoFenceObject
+    {   
+        // Relative to the centre of the robot, in direction the robot is facing
+        // These values are the distance in metres to the virtual wall the robot will stop at
+        // 0 means the wall is running through the middle of the robot
+        // negative distances will have the robot start outside the area, and can only move into it
+        /** Metres the robot can travel left */
+        public static final double fieldLeft = 0.0;
+
+        /** Metres the robot can travel right */
+        public static final double fieldRight = 16.5;
+
+        /** Metres the robot can travel forwards */
+        public static final double fieldFront = 8.2;
+
+        /** Metres the robot can travel back */
+        public static final double fieldBack = 0;    
+
+        public static final GeoFenceObject field = new GeoFenceObject
         (
-            -GANG_SHOW_CONSTANTS.stageBack, 
-            -GANG_SHOW_CONSTANTS.stageRight, 
-            GANG_SHOW_CONSTANTS.stageBack+GANG_SHOW_CONSTANTS.stageFront, 
-            GANG_SHOW_CONSTANTS.stageLeft+GANG_SHOW_CONSTANTS.stageRight, 
+            -fieldBack, 
+            -fieldRight, 
+            fieldBack + fieldFront, 
+            fieldLeft + fieldRight, 
             false,
-            GANG_SHOW_CONSTANTS.wallBuffer
+            1.0 // This value is how close in metres the robot can get to the virtual wall before it starts to slow down when moving towards it
         );
         
-        public static final GeoFenceObject[] fieldGeoFence = {GANG_SHOW_STAGE};
+        public static final GeoFenceObject[] fieldGeoFence = {field};
         
         /** Radius from robot centre in metres where geofence is triggered */
-        public static final double robotBuffer = GANG_SHOW_CONSTANTS.robotRadius;
+        public static final double robotBuffer = 0.4;
         
         //public static OdometryReadout fieldReadout = new OdometryReadout(0.5);
         //fieldReadout.addRectangle(fieldGeoFence[0].getObject);
