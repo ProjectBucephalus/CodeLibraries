@@ -4,12 +4,14 @@ import edu.wpi.first.math.geometry.Translation2d;
 
 public class GeoFenceObject
     {
-        public double xLimit;
-        public double yLimit;
-        public double xSize;
-        public double ySize;
-        public boolean avoidInterior;
-        public double buffer;
+        private double xLimit;
+        private double yLimit;
+        private double xSize;
+        private double ySize;
+        private boolean avoidInterior;
+        private double buffer;
+        private double radius;
+        private double fullBuffer;
 
         public GeoFenceObject()
         {
@@ -19,6 +21,7 @@ public class GeoFenceObject
             ySize = 0;
             avoidInterior = true;
             buffer = 0.5;
+            radius = 0;
         }
 
         /**
@@ -34,6 +37,7 @@ public class GeoFenceObject
             ySize = 0;
             avoidInterior = true;
             buffer = 0.5;
+            radius = 0;
         }
 
         /**
@@ -51,7 +55,8 @@ public class GeoFenceObject
             this.xSize = Math.abs(xSize);
             this.ySize = Math.abs(ySize);
             this.avoidInterior = avoidInterior;
-            this.buffer = buffer;
+            this.buffer = Math.max(buffer, 0.1);
+            radius = 0;
         }
 
         /**
@@ -60,24 +65,24 @@ public class GeoFenceObject
          * @param robotR Effective radius of the robot, metres
          * @return BOOLEAN is the robot close enough to the object to check more thoroughly
          */
-        public boolean checkPosition(Translation2d robotXY, double robotR)
+        public boolean checkPosition(Translation2d robotXY, double checkRadius)
         {
             // det. robotXY within (Geofence + robotR + buffer) box
             if (avoidInterior)
             {
-                if      (robotXY.getX() <= xLimit + xSize + (robotR + buffer)  // Within +X of barrier + buffer
-                     &&  robotXY.getX() >= xLimit - (robotR + buffer))         // Within -X of barrier + buffer
-                            {return true;} 
-                else if (robotXY.getY() <= yLimit + ySize + (robotR + buffer)  // Within +Y of barrier + buffer
-                     &&  robotXY.getY() >= yLimit - (robotR + buffer))         // Within -Y of barrier + buffer
-                            {return true;}
+                if (robotXY.getX() <= xLimit - checkRadius)         {return false;} // Far from -X barrier
+                if (robotXY.getX() >= xLimit + xSize + checkRadius) {return false;} // Far from +X barrier
+                if (robotXY.getY() <= yLimit - checkRadius)         {return false;} // Far from -Y barrier
+                if (robotXY.getY() >= yLimit + ySize + checkRadius) {return false;} // Far from +Y barrier
+                return true;                                                        // Close to at least one barrier
             }
             else
             {
-                if      (robotXY.getX() >= xLimit + xSize - (robotR + buffer)) {return true;}  // Close to inside of +X barrier
-                else if (robotXY.getX() <= xLimit + (robotR + buffer))         {return true;}  // Close to inside of -X barrier
-                else if (robotXY.getY() >= yLimit + ySize - (robotR + buffer)) {return true;}  // Close to inside of +Y barrier
-                else if (robotXY.getY() <= yLimit + (robotR + buffer))         {return true;}  // Close to inside of -Y barrier
+                if      (robotXY.getX() >= xLimit + xSize - checkRadius) {return true;}  // Close to inside of +X barrier
+                else if (robotXY.getX() <= xLimit + checkRadius)         {return true;}  // Close to inside of -X barrier
+                else if (robotXY.getY() >= yLimit + ySize - checkRadius) {return true;}  // Close to inside of +Y barrier
+                else if (robotXY.getY() <= yLimit + checkRadius)         {return true;}  // Close to inside of -Y barrier
+                else                                                     {return false;}
             }
             return false;
         }
@@ -95,16 +100,74 @@ public class GeoFenceObject
 
             double distanceToEdgeX;
             double distanceToEdgeY;
+            fullBuffer = robotR + buffer + radius;
             
-            if (!checkPosition(robotXY, robotR)) {return motionXY;}
+            if (!checkPosition(robotXY, fullBuffer)) {return motionXY;}
             // orth. v. diagonal v. internal
             double motionX = motionXY.getX();
             double motionY = motionXY.getY();
+            double motionT;
+            double motionN;
+            double distanceN;
             if (avoidInterior) 
             {
-                // TODO: Orthogonal only check
-                // TODO: Orthogonal compensation
-                // TODO: Diagonal compensation
+                if (robotXY.getX() < xLimit - (robotR + radius)) 
+                {
+                    if (robotXY.getY() < yLimit - (robotR + radius)) // SW Corner
+                    {
+                        // Convert motion from X/Y to Tangent and Normal components
+
+                        // Convert from Tangent and Normal components back to X/Y
+                    }
+                    else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NW Corner
+                    {
+                        // Convert motion from X/Y to Tangent and Normal components
+
+                        // Convert from Tangent and Normal components back to X/Y
+                    }
+                    else // W Cardinal
+                    {
+                        distanceToEdgeX = (xLimit - radius) - (robotXY.getX() + robotR); 
+                        motionX = Math.min(motionX, (clamp(distanceToEdgeX, 0, buffer)) / buffer);
+                    }
+                }
+                else if (robotXY.getX() > xLimit + xSize + (robotR + radius))
+                {
+                    if (robotXY.getY() < yLimit - (robotR + radius)) // SE Corner
+                    {
+                        // Convert motion from X/Y to Tangent and Normal components
+
+                        // Convert from Tangent and Normal components back to X/Y
+                    }
+                    else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NE Corner
+                    {   
+                        distanceN = Math.sqrt(Math.pow(robotXY.getX - (xLimit + xSize), 2) + Math.pow(robotXY.getY, 2))
+                        motionN = (robotXY.getX() - (xLimit + xSize)) * (motionX + motionY) / ();
+                    }
+                    else // E Cardinal
+                    {
+                        distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit + xSize + radius);
+                        motionX = Math.max(motionX, (-clamp(distanceToEdgeX, 0, buffer)) / buffer);
+                    }
+                }
+                else 
+                {
+                    if (robotXY.getY() < yLimit - (robotR + radius)) // S Cardinal
+                    {
+                        distanceToEdgeY = (yLimit - radius) - (robotXY.getY() + robotR);
+                        motionY = Math.min(motionY, (clamp(distanceToEdgeY, 0, buffer)) / buffer);
+                    } 
+                    else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // N Cardinal
+                    {
+                        distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit + ySize + radius);
+                        motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
+                    }
+                    else // Center (you've met a terrible fate *insert kazoo music here*)
+                    {
+                        motionX = clamp(motionX, -0.5, 0.5);
+                        motionY = clamp(motionY, -0.5, 0.5);                                  
+                    } 
+                }
             }
             else    
             {
@@ -116,27 +179,25 @@ public class GeoFenceObject
                 // This ensures the motion in that direction does not go above the clamped + normalised distance from the edge, to cap speed.
                 if (motionX > 0)
                 {   
-                    distanceToEdgeX = (xLimit + xSize) - (robotXY.getX() + robotR); 
+                    distanceToEdgeX = (xLimit + xSize - radius) - (robotXY.getX() + robotR); 
                     motionX = Math.min(motionX, (clamp(distanceToEdgeX, 0, buffer)) / buffer);
                 }
                 else if (motionX < 0)
                 {   
-                    distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit);
+                    distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit + radius);
                     motionX = Math.max(motionX, (-clamp(distanceToEdgeX, 0, buffer)) / buffer);
                 }
 
                 if (motionY > 0)
                 {   
-                    distanceToEdgeY = (yLimit + ySize) - (robotXY.getY() + robotR);
+                    distanceToEdgeY = (yLimit + ySize - radius) - (robotXY.getY() + robotR);
                     motionY = Math.min(motionY, (clamp(distanceToEdgeY, 0, buffer)) / buffer);
                 }
                 else if (motionY < 0)
                 {   
-                    distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit);
+                    distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit + radius);
                     motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
                 }
-
-                return new Translation2d(motionX, motionY);
             }
             // det. dist.
             // discard if dist. beyond threshold
@@ -146,6 +207,7 @@ public class GeoFenceObject
             // damp para. comp.
             // convert para. perp. comp. to motionXY
             
+            return new Translation2d(motionX, motionY);
             return motionXY;
         }
 
