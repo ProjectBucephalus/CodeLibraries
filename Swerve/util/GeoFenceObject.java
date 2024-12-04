@@ -89,12 +89,17 @@ public class GeoFenceObject
 
         private Translation2d pointDamping(double cornerX, double cornerY, Translation2d motionXY, double robotR, Translation2d robotXY, double radius)
         {
+            // Calculates X and Y distances to the point
             double distanceX = cornerX - robotXY.getX;
             double distanceY = cornerY - robotXY.getY;
+            // Calculates the normal distance to the corner through pythagoras; this is the actual distance between the robot and point
             double distanceN = Math.sqrt(Math.pow(distanceX, 2) + Math.pow(distanceY, 2));
+            // Calculates the robot's motion normal and tangent to the point; i.e., towards and away from the point, and from side to side relative to the point
             double motionN   = ((distanceX * motionXY.getX) + (distanceY * motionXY.getY)) / distanceN;
             double motionT   = ((distanceX * motionXY.getY) - (distanceY * motionXY.getX)) / distanceN;
+            // Clamps the normal motion, i.e. motion towards the point, in order to clamp robot speed
             motionN = Math.min(motionN, motionN * clamp(distanceN-(robotR + radius), 0, buffer) / (max(distanceX,distanceY) * buffer));
+            // Converts clamped motion from normal back to X and Y
             double motionX   = ((motionN * distanceX) - (motionT * distanceY)) / distanceN;
             double motionY   = ((motionN * distanceY) + (motionT * distanceX)) / distanceN;
 
