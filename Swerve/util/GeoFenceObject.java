@@ -97,10 +97,8 @@ public class GeoFenceObject
             motionN = Math.min(motionN, motionN * clamp(distanceN-(robotR + radius), 0, buffer) / (max(distanceX,distanceY) * buffer));
             double motionX   = ((motionN * distanceX) - (motionT * distanceY)) / distanceN;
             double motionY   = ((motionN * distanceY) + (motionT * distanceX)) / distanceN;
-            
-            motionXY = new Translation2d(motionX, motionY);
 
-            return motionXY;
+            return new Translation2d(motionX, motionY);
         }
 
         /**
