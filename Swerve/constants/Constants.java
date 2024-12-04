@@ -209,4 +209,8 @@ public final class Constants
             new TrapezoidProfile.Constraints(
                 kMaxAngularSpeedRadiansPerSecond, kMaxAngularSpeedRadiansPerSecondSquared);
     }
+
+    /** Vertical Elevator ID */
+    //Change IDs later
+    public static final int kVerticalElevatorCanId = null;
 }
