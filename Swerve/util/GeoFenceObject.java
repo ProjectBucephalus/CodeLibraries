@@ -87,6 +87,22 @@ public class GeoFenceObject
             return false;
         }
 
+        private Translation2d pointDamping(double cornerX, double cornerY, Translation2d motionXY, double robotR, Translation2d robotXY, double radius)
+        {
+            double distanceX = cornerX - robotXY.getX;
+            double distanceY = cornerY - robotXY.getY;
+            double distanceN = Math.sqrt(Math.pow(distanceX, 2) + Math.pow(distanceY, 2));
+            double motionN   = ((distanceX * motionXY.getX) + (distanceY * motionXY.getY)) / distanceN;
+            double motionT   = ((distanceX * motionXY.getY) - (distanceY * motionXY.getX)) / distanceN;
+            motionN = Math.min(motionN, motionN * clamp(distanceN-(robotR + radius), 0, buffer) / (max(distanceX,distanceY) * buffer));
+            double motionX   = ((motionN * distanceX) - (motionT * distanceY)) / distanceN;
+            double motionY   = ((motionN * distanceY) + (motionT * distanceX)) / distanceN;
+            
+            motionXY = new Translation2d(motionX, motionY);
+
+            return motionXY;
+        }
+
         /**
          * Damps the motion of the robot in the direction of a Geofence object to prevent collision
          * @param robotXY Coordinates of the robot, metres
@@ -115,15 +131,15 @@ public class GeoFenceObject
                 {
                     if (robotXY.getY() < yLimit - (robotR + radius)) // SW Corner
                     {
-                        // Convert motion from X/Y to Tangent and Normal components
-
-                        // Convert from Tangent and Normal components back to X/Y
+                        motionXY = cornerDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
+                        motionX = MotionXY.getX;
+                        motionY = MotionXY.getY;
                     }
                     else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NW Corner
                     {
-                        // Convert motion from X/Y to Tangent and Normal components
-
-                        // Convert from Tangent and Normal components back to X/Y
+                        motionXY = cornerDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
+                        motionX = MotionXY.getX;
+                        motionY = MotionXY.getY;
                     }
                     else // W Cardinal
                     {
@@ -135,14 +151,15 @@ public class GeoFenceObject
                 {
                     if (robotXY.getY() < yLimit - (robotR + radius)) // SE Corner
                     {
-                        // Convert motion from X/Y to Tangent and Normal components
-
-                        // Convert from Tangent and Normal components back to X/Y
+                        motionXY = cornerDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
+                        motionX = MotionXY.getX;
+                        motionY = MotionXY.getY;
                     }
                     else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NE Corner
                     {   
-                        distanceN = Math.sqrt(Math.pow(robotXY.getX - (xLimit + xSize), 2) + Math.pow(robotXY.getY, 2))
-                        motionN = (robotXY.getX() - (xLimit + xSize)) * (motionX + motionY) / ();
+                        motionXY = cornerDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
+                        motionX = MotionXY.getX;
+                        motionY = MotionXY.getY;
                     }
                     else // E Cardinal
                     {
