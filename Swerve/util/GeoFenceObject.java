@@ -15,35 +15,56 @@ public class GeoFenceObject
         private double radius;
         private double fullBuffer;
 
+        /**
+         * Default empty constructor
+         */
         public GeoFenceObject()
         {
             xLimit = -100;
             yLimit = -100;
             xSize = 0;
             ySize = 0;
-            objectType = ObjectTypes.walls;
-            buffer = 0.5;
+            objectType = ObjectTypes.point;
+            buffer = 1;
             radius = 0;
         }
 
         /**
-         * Define a single point to avoid
+         * Define a minimum point-type object to avoid
          * @param x x-coordinate, metres
          * @param y y-coordinate, metres
          */
         public GeoFenceObject(double x, double y)
         {
-            xLimit = x;
-            yLimit = y;
-            xSize = 0;
-            ySize = 0;
-            objectType = ObjectTypes.walls;
-            buffer = 0.5;
-            radius = 0;
+            GeoFenceObject(x, y, 0.5, 0);
         }
 
         /**
-         * Define rectangular geofence
+         * Define a minimum point-type object to avoid
+         * @param x x-coordinate, metres
+         * @param y y-coordinate, metres
+         */
+        public GeoFenceObject(double x, double y, double buffer, double radius)
+        {
+            GeoFenceObject(x, y, 0, 0 , ObjectTypes.point, 0.5, 0);
+        }
+
+        /**
+         * Define a line-type object to avoid 
+         * @param xA x-coordinate in meters of the first point
+         * @param yA y-coordinate in meters of the first point
+         * @param xB x-coordinate in meters of the second point
+         * @param yB y-coordinate in meters of the second point
+         * @param buffer range within which the robot begins slowing down   
+         * @param radius radius of object; hard-stop zone
+         */
+        public GeoFenceObject(double xA, double yA, double xB, double yB, double buffer, double radius) 
+        {
+
+        }
+
+        /**
+         * Define rectangular geofence (box or walls)
          * @param xLimit Start x-coordinate of region, metres
          * @param yLimit Start y-coordinate of region, metres
          * @param xSize Size of region in x-axis, metres
@@ -89,7 +110,7 @@ public class GeoFenceObject
             return false;
         }
 
-        private Translation2d pointDamping(double cornerX, double cornerY, Translation2d motionXY, double robotR, Translation2d robotXY, double radius)
+        private Translation2d pointDamping(double cornerX, double cornerY, Translation2d motionXY, double robotR, Translation2d robotXY)
         {
             // Calculates X and Y distances to the point
             double distanceX = cornerX - robotXY.getX;
@@ -130,112 +151,102 @@ public class GeoFenceObject
             double motionT;
             double motionN;
             double distanceN;
-            if (objectType = ObjectTypes.point)
+            
+            switch (objectType) 
             {
-                motionXY = pointDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
-                motionX = MotionXY.getX;
-                motionY = MotionXY.getY;
-            }
-            else if (objectType = ObjectTypes.box) 
-            {
-                if (robotXY.getX() < xLimit - (robotR + radius)) 
-                {
-                    if (robotXY.getY() < yLimit - (robotR + radius)) // SW Corner
+                case ObjectTypes.point:
+                    return pointDamping(xLimit, yLimit, motionXY, robotR, robotXY);
+                    break;
+                case ObjectTypes.line:
+                    
+                    break;
+                case ObjectTypes.box:
+                    if (robotXY.getX() < xLimit - (robotR + radius)) 
                     {
-                        motionXY = pointDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
-                        motionX = MotionXY.getX;
-                        motionY = MotionXY.getY;
+                        if (robotXY.getY() < yLimit - (robotR + radius)) // SW Corner
+                        {
+                            return pointDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
+                        }
+                        else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NW Corner
+                        {
+                            return pointDamping(xLimit, yLimit + ySize, motionXY, robotR, robotXY, radius);
+                        }
+                        else // W Cardinal
+                        {
+                            distanceToEdgeX = (xLimit - radius) - (robotXY.getX() + robotR); 
+                            motionX = Math.min(motionX, (clamp(distanceToEdgeX, 0, buffer)) / buffer);
+                        }
                     }
-                    else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NW Corner
+                    else if (robotXY.getX() > xLimit + xSize + (robotR + radius))
                     {
-                        motionXY = pointDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
-                        motionX = MotionXY.getX;
-                        motionY = MotionXY.getY;
+                        if (robotXY.getY() < yLimit - (robotR + radius)) // SE Corner
+                        {
+                            return pointDamping(xLimit + xSize, yLimit, motionXY, robotR, robotXY, radius);
+                        }
+                        else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NE Corner
+                        {   
+                            return pointDamping(xLimit + xSize, yLimit + ySize, motionXY, robotR, robotXY, radius);
+                        }
+                        else // E Cardinal
+                        {
+                            distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit + xSize + radius);
+                            motionX = Math.max(motionX, (-clamp(distanceToEdgeX, 0, buffer)) / buffer);
+                        }
                     }
-                    else // W Cardinal
+                    else 
                     {
-                        distanceToEdgeX = (xLimit - radius) - (robotXY.getX() + robotR); 
+                        if (robotXY.getY() < yLimit - (robotR + radius)) // S Cardinal
+                        {
+                            distanceToEdgeY = (yLimit - radius) - (robotXY.getY() + robotR);
+                            motionY = Math.min(motionY, (clamp(distanceToEdgeY, 0, buffer)) / buffer);
+                        } 
+                        else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // N Cardinal
+                        {
+                            distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit + ySize + radius);
+                            motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
+                        }
+                        else // Center (you've met a terrible fate *insert kazoo music here*)
+                        {
+                            motionX = clamp(motionX, -0.5, 0.5);
+                            motionY = clamp(motionY, -0.5, 0.5);                                  
+                        } 
+                    }
+                    return new Translation2d(motionX, motionY);
+                    break;
+                case ObjectTypes.walls:
+                    // Calculates distance to the relevant edge of the field
+                    // Calculates edge position, and subtracts robot position + radius from edge position.
+
+                    // Sets the motion in the relevant direction to the minimum of the current motion
+                    // And the distance from the edge clamped between 0 and the edge buffer, and normalised to a maximum of 1.
+                    // This ensures the motion in that direction does not go above the clamped + normalised distance from the edge, to cap speed.
+                    if (motionX > 0)
+                    {   
+                        distanceToEdgeX = (xLimit + xSize - radius) - (robotXY.getX() + robotR); 
                         motionX = Math.min(motionX, (clamp(distanceToEdgeX, 0, buffer)) / buffer);
                     }
-                }
-                else if (robotXY.getX() > xLimit + xSize + (robotR + radius))
-                {
-                    if (robotXY.getY() < yLimit - (robotR + radius)) // SE Corner
-                    {
-                        motionXY = pointDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
-                        motionX = MotionXY.getX;
-                        motionY = MotionXY.getY;
-                    }
-                    else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NE Corner
+                    else if (motionX < 0)
                     {   
-                        motionXY = pointDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
-                        motionX = MotionXY.getX;
-                        motionY = MotionXY.getY;
-                    }
-                    else // E Cardinal
-                    {
-                        distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit + xSize + radius);
+                        distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit + radius);
                         motionX = Math.max(motionX, (-clamp(distanceToEdgeX, 0, buffer)) / buffer);
                     }
-                }
-                else 
-                {
-                    if (robotXY.getY() < yLimit - (robotR + radius)) // S Cardinal
-                    {
-                        distanceToEdgeY = (yLimit - radius) - (robotXY.getY() + robotR);
+
+                    if (motionY > 0)
+                    {   
+                        distanceToEdgeY = (yLimit + ySize - radius) - (robotXY.getY() + robotR);
                         motionY = Math.min(motionY, (clamp(distanceToEdgeY, 0, buffer)) / buffer);
-                    } 
-                    else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // N Cardinal
-                    {
-                        distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit + ySize + radius);
+                    }
+                    else if (motionY < 0)
+                    {   
+                        distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit + radius);
                         motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
                     }
-                    else // Center (you've met a terrible fate *insert kazoo music here*)
-                    {
-                        motionX = clamp(motionX, -0.5, 0.5);
-                        motionY = clamp(motionY, -0.5, 0.5);                                  
-                    } 
-                }
-            }
-            else    
-            {
-                // Calculates distance to the relevant edge of the field
-                // Calculates edge position, and subtracts robot position + radius from edge position.
-
-                // Sets the motion in the relevant direction to the minimum of the current motion
-                // And the distance from the edge clamped between 0 and the edge buffer, and normalised to a maximum of 1.
-                // This ensures the motion in that direction does not go above the clamped + normalised distance from the edge, to cap speed.
-                if (motionX > 0)
-                {   
-                    distanceToEdgeX = (xLimit + xSize - radius) - (robotXY.getX() + robotR); 
-                    motionX = Math.min(motionX, (clamp(distanceToEdgeX, 0, buffer)) / buffer);
-                }
-                else if (motionX < 0)
-                {   
-                    distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit + radius);
-                    motionX = Math.max(motionX, (-clamp(distanceToEdgeX, 0, buffer)) / buffer);
-                }
-
-                if (motionY > 0)
-                {   
-                    distanceToEdgeY = (yLimit + ySize - radius) - (robotXY.getY() + robotR);
-                    motionY = Math.min(motionY, (clamp(distanceToEdgeY, 0, buffer)) / buffer);
-                }
-                else if (motionY < 0)
-                {   
-                    distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit + radius);
-                    motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
-                }
-            }
-            // det. dist.
-            // discard if dist. beyond threshold
-            // det. angle robot to Geofence
-            // convert motionXY to para. perp. components
-            // discard if para. comp. away from Geofence
-            // damp para. comp.
-            // convert para. perp. comp. to motionXY
-            
-            return new Translation2d(motionX, motionY);
+                    return new Translation2d(motionX, motionY);
+                    break;
+                default:
+                    return motionXY;
+                    break;
+            }            
             return motionXY;
         }
 
