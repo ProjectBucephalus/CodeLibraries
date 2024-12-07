@@ -1,7 +1,7 @@
-package frc.robot.subsystems;
+package frc.robot.Swerve.subsystems;
 
-import frc.robot.SwerveModule;
-import frc.lib.util.GeoFenceObject;
+import frc.robot.Swerve.util.SwerveModule;
+import frc.robot.Swerve.util.GeoFenceObject;
 import frc.robot.Constants;
 import frc.robot.GANG_SHOW_CONSTANTS;
 import frc.robot.Constants.*;

@@ -1,4 +1,4 @@
-package frc.lib.util;
+package frc.robot.Swerve.util;
 
 import edu.wpi.first.math.geometry.Translation2d;
 
@@ -10,7 +10,7 @@ public class GeoFenceObject
         private double yLimit;
         private double xSize;
         private double ySize;
-        private objectTypes objectType;
+        private ObjectTypes objectType;
         private double buffer;
         private double radius;
         private double fullBuffer;
@@ -36,7 +36,7 @@ public class GeoFenceObject
          */
         public GeoFenceObject(double x, double y)
         {
-            GeoFenceObject(x, y, 0.5, 0);
+            new GeoFenceObject(x, y, 0.5, 0);
         }
 
         /**
@@ -46,7 +46,7 @@ public class GeoFenceObject
          */
         public GeoFenceObject(double x, double y, double buffer, double radius)
         {
-            GeoFenceObject(x, y, 0, 0 , ObjectTypes.point, 0.5, 0);
+            new GeoFenceObject(x, y, 0.0, 0.0, ObjectTypes.point, 0.5, 0.0);
         }
 
         /**
@@ -71,7 +71,7 @@ public class GeoFenceObject
          * @param ySize Size of region in y-axis, metres
          * @param objectType Type of object to avoid. Walls (stay within area), box (stay outside area), line, or point 
          */
-        public GeoFenceObject(double xLimit, double yLimit, double xSize, double ySize, ObjectTypes objectType, double buffer)
+        public GeoFenceObject(double xLimit, double yLimit, double xSize, double ySize, ObjectTypes objectType, double buffer, double radius)
         {
             this.xLimit = Math.min(xLimit, xLimit + xSize);
             this.yLimit = Math.min(yLimit, yLimit + ySize);
@@ -79,7 +79,7 @@ public class GeoFenceObject
             this.ySize = Math.abs(ySize);
             this.objectType = objectType;
             this.buffer = Math.max(buffer, 0.1);
-            radius = 0;
+            this.radius = radius;
         }
 
         /**
@@ -91,7 +91,7 @@ public class GeoFenceObject
         public boolean checkPosition(Translation2d robotXY, double checkRadius)
         {
             // det. robotXY within (Geofence + robotR + buffer) box
-            if (objectType = ObjectTypes.box)
+            if (objectType == ObjectTypes.box)
             {
                 if (robotXY.getX() <= xLimit - checkRadius)         {return false;} // Far from -X barrier
                 if (robotXY.getX() >= xLimit + xSize + checkRadius) {return false;} // Far from +X barrier
@@ -107,21 +107,20 @@ public class GeoFenceObject
                 else if (robotXY.getY() <= yLimit + checkRadius)         {return true;}  // Close to inside of -Y barrier
                 else                                                     {return false;}
             }
-            return false;
         }
 
         private Translation2d pointDamping(double cornerX, double cornerY, Translation2d motionXY, double robotR, Translation2d robotXY)
         {
             // Calculates X and Y distances to the point
-            double distanceX = cornerX - robotXY.getX;
-            double distanceY = cornerY - robotXY.getY;
+            double distanceX = cornerX - robotXY.getX();
+            double distanceY = cornerY - robotXY.getY();
             // Calculates the normal distance to the corner through pythagoras; this is the actual distance between the robot and point
             double distanceN = Math.sqrt(Math.pow(distanceX, 2) + Math.pow(distanceY, 2));
             // Calculates the robot's motion normal and tangent to the point; i.e., towards and away from the point, and from side to side relative to the point
-            double motionN   = ((distanceX * motionXY.getX) + (distanceY * motionXY.getY)) / distanceN;
-            double motionT   = ((distanceX * motionXY.getY) - (distanceY * motionXY.getX)) / distanceN;
+            double motionN   = ((distanceX * motionXY.getX()) + (distanceY * motionXY.getY())) / distanceN;
+            double motionT   = ((distanceX * motionXY.getY()) - (distanceY * motionXY.getX())) / distanceN;
             // Clamps the normal motion, i.e. motion towards the point, in order to clamp robot speed
-            motionN = Math.min(motionN, motionN * clamp(distanceN-(robotR + radius), 0, buffer) / (max(distanceX,distanceY) * buffer));
+            motionN = Math.min(motionN, motionN * clamp(distanceN-(robotR + radius), 0, buffer) / (Math.max(distanceX,distanceY) * buffer));
             // Converts clamped motion from normal back to X and Y
             double motionX   = ((motionN * distanceX) - (motionT * distanceY)) / distanceN;
             double motionY   = ((motionN * distanceY) + (motionT * distanceX)) / distanceN;
@@ -154,22 +153,21 @@ public class GeoFenceObject
             
             switch (objectType) 
             {
-                case ObjectTypes.point:
+                case point:
                     return pointDamping(xLimit, yLimit, motionXY, robotR, robotXY);
-                    break;
-                case ObjectTypes.line:
+                case line:
                     
                     break;
-                case ObjectTypes.box:
+                case box:
                     if (robotXY.getX() < xLimit - (robotR + radius)) 
                     {
                         if (robotXY.getY() < yLimit - (robotR + radius)) // SW Corner
                         {
-                            return pointDamping(xLimit, yLimit, motionXY, robotR, robotXY, radius);
+                            return pointDamping(xLimit, yLimit, motionXY, robotR, robotXY);
                         }
                         else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NW Corner
                         {
-                            return pointDamping(xLimit, yLimit + ySize, motionXY, robotR, robotXY, radius);
+                            return pointDamping(xLimit, yLimit + ySize, motionXY, robotR, robotXY);
                         }
                         else // W Cardinal
                         {
@@ -181,11 +179,11 @@ public class GeoFenceObject
                     {
                         if (robotXY.getY() < yLimit - (robotR + radius)) // SE Corner
                         {
-                            return pointDamping(xLimit + xSize, yLimit, motionXY, robotR, robotXY, radius);
+                            return pointDamping(xLimit + xSize, yLimit, motionXY, robotR, robotXY);
                         }
                         else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // NE Corner
                         {   
-                            return pointDamping(xLimit + xSize, yLimit + ySize, motionXY, robotR, robotXY, radius);
+                            return pointDamping(xLimit + xSize, yLimit + ySize, motionXY, robotR, robotXY);
                         }
                         else // E Cardinal
                         {
@@ -212,8 +210,7 @@ public class GeoFenceObject
                         } 
                     }
                     return new Translation2d(motionX, motionY);
-                    break;
-                case ObjectTypes.walls:
+                case walls:
                     // Calculates distance to the relevant edge of the field
                     // Calculates edge position, and subtracts robot position + radius from edge position.
 
@@ -242,10 +239,8 @@ public class GeoFenceObject
                         motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
                     }
                     return new Translation2d(motionX, motionY);
-                    break;
                 default:
                     return motionXY;
-                    break;
             }            
             return motionXY;
         }

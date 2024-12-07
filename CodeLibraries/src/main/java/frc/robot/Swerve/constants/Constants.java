@@ -1,4 +1,4 @@
-package frc.robot;
+package frc.robot.Swerve.constants;
 
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -9,12 +9,10 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
-import frc.lib.util.COTSTalonFXSwerveConstants;
-import frc.lib.util.SwerveModuleConstants;
+import frc.robot.Swerve.util.COTSTalonFXSwerveConstants;
+import frc.robot.Swerve.util.SwerveModuleConstants;
 
-import frc.lib.util.GeoFenceObject;
-import frc.lib.util.OdometryReadout;
-import frc.robot.FenceConstants;
+import frc.robot.Swerve.util.GeoFenceObject;
 
 public final class Constants 
 {
@@ -59,8 +57,9 @@ public final class Constants
             -fieldRight, 
             fieldBack + fieldFront, 
             fieldLeft + fieldRight, 
-            false,
-            1.0 // This value is how close in metres the robot can get to the virtual wall before it starts to slow down when moving towards it
+            GeoFenceObject.ObjectTypes.walls,
+            1.0,
+            0.0
         );
         
         public static final GeoFenceObject[] fieldGeoFence = {field};
@@ -212,5 +211,5 @@ public final class Constants
 
     /** Vertical Elevator ID */
     //Change IDs later
-    public static final int kVerticalElevatorCanId = null;
+    public static final int kVerticalElevatorCanId = 0;
 }
