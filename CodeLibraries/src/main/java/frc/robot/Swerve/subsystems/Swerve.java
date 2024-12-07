@@ -2,9 +2,7 @@ package frc.robot.Swerve.subsystems;
 
 import frc.robot.Swerve.util.SwerveModule;
 import frc.robot.Swerve.util.GeoFenceObject;
-import frc.robot.Constants;
-import frc.robot.GANG_SHOW_CONSTANTS;
-import frc.robot.Constants.*;
+import frc.robot.Swerve.constants.Constants;
 
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -204,9 +202,9 @@ public class Swerve extends SubsystemBase {
         Translation2d motionXY = new Translation2d(translationVal,strafeVal);
         if (fenced)
         {
-            for (int i = 0; i < GeoFencing.fieldGeoFence.length; i++)
+            for (int i = 0; i < Constants.GeoFencing.fieldGeoFence.length; i++)
             {
-                motionXY = GeoFencing.fieldGeoFence[i].dampMotion(getPose().getTranslation(), motionXY, robotRadius);
+                motionXY = Constants.GeoFencing.fieldGeoFence[i].dampMotion(getPose().getTranslation(), motionXY, robotRadius);
             }
         }
         drive(motionXY.getX(), motionXY.getY(), targetDelta, brakeVal, invertBrake, true);
