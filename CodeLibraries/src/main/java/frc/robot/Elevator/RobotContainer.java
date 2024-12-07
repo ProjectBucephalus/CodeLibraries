@@ -11,8 +11,8 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 
-import frc.robot.commands.*;
-import frc.robot.subsystems.*;
+import frc.robot.Elevator.commands.*;
+import frc.robot.Elevator.subsystems.*;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -25,7 +25,7 @@ public class RobotContainer {
     private final CommandXboxController coDriver = new CommandXboxController(1);
 
     /* Subsystems */
-    private final Elevator s_Swerve = new Elevator();
+    private final Elevator s_Elevator = new Elevator();
 
     /** The container for the robot. Contains subsystems, OI devices, and commands. */
     public RobotContainer() {

@@ -4,57 +4,13 @@
 
 package frc.robot.Elevator.subsystems;
 
-import com.ctre.phoenix.motorcontrol.ControlMode;
-import com.ctre.phoenix.motorcontrol.FeedbackDevice;
-import com.ctre.phoenix.motorcontrol.LimitSwitchNormal;
-import com.ctre.phoenix.motorcontrol.LimitSwitchSource;
-import com.ctre.phoenix.motorcontrol.NeutralMode;
-import com.ctre.phoenix.motorcontrol.TalonFXSensorCollection;
-import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import edu.wpi.first.math.controller.ElevatorFeedforward;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Config;
 import frc.robot.Constants;
 
 /** Add your docs here. */
-public class VerticalExtension extends SubsystemBase {
-  private verticalState currentState = verticalState.ZERO;
-
-    private final WPI_TalonFX verticalExtensionMotor = new WPI_TalonFX(Constants.kVerticalElevatorCanId);
-  //  private final CANCoder verticalExtensionEncoder = new CANCoder(Constants.kVerticalElevatorEncoderCanId);
-    private double armGoal = 0;
-
-    //this subsystem uses a combination of a feedfoward and feedback control.
-    //this gives us the advantage of better profiling from feedfoward and better precision from feedback.
-    private final ElevatorFeedforward m_feedforward = new ElevatorFeedforward(
-        Config.kVerticalExtensionKS, Config.kVerticalExtensionKG, //kS is the static friction constant, kG is the gravity constant
-        Config.kVerticalExtensionKV, Config.kVerticalExtensionKA //kV is the velocity constant, kA is the acceleration constant
-      );
-
-  private static VerticalExtension myInstance;
-
-  public static VerticalExtension getInstance()
-  {
-    if (myInstance == null)
-    {
-      myInstance = new VerticalExtension();
-    }
-    return myInstance;
-  }
-  /** Create a new ArmSubsystem. */
-  private VerticalExtension() {
-
-  }
-
-  public enum verticalState{
-    HIGH,
-    SHELF,
-    MEDIUM,
-    LOW,
-    HOME,
-    ZERO,
-    MIDHIGH,
-  }
+public class Elevator extends SubsystemBase {
 
   public void setDesiredState(verticalState state){
     currentState = state;
@@ -62,29 +18,6 @@ public class VerticalExtension extends SubsystemBase {
   public verticalState getState(){
     return currentState;
   }
-  /** 
-   * Reset and configure sensors, motors, and encoders.
-   */
-  public void initSystem() {
-    verticalExtensionMotor.configFactoryDefault(); //reset and configure the motor so we know it is correctly configured
-    verticalExtensionMotor.config_kP(0, Config.kVerticalExtensionKP);
-    verticalExtensionMotor.config_kD(0, Config.kVerticalExtensionKD);
-    verticalExtensionMotor.config_kF(0, m_feedforward.calculate(Config.kVerticalExtensionMaxVelocity) / Config.kVerticalExtensionEncoderPPR);
-    verticalExtensionMotor.config_kP(1, Config.kVerticalExtensionKP);
-    verticalExtensionMotor.config_kD(1, Config.kVerticalExtensionKD);
-    verticalExtensionMotor.config_kF( 1, m_feedforward.calculate(Config.kVerticalExtensionMaxVelocity) / Config.kVerticalExtensionEncoderPPR);
-    verticalExtensionMotor.configMotionAcceleration(Config.kVerticalExtensionMaxAcceleration / (Config.kVerticalExtensionMetresPerRotation / Config.kVerticalExtensionEncoderPPR));
-    verticalExtensionMotor.configMotionCruiseVelocity(Config.kVerticalExtensionMaxVelocity / (Config.kVerticalExtensionMetresPerRotation / Config.kVerticalExtensionEncoderPPR));
-    verticalExtensionMotor.configForwardLimitSwitchSource(LimitSwitchSource.FeedbackConnector, LimitSwitchNormal.NormallyClosed);
-    verticalExtensionMotor.configReverseLimitSwitchSource(LimitSwitchSource.FeedbackConnector, LimitSwitchNormal.NormallyClosed);
-    verticalExtensionMotor.setNeutralMode(NeutralMode.Brake);
-    
-    verticalExtensionMotor.configSelectedFeedbackSensor(FeedbackDevice.IntegratedSensor, 0, 0);
-    //verticalExtensionMotor.configRemoteFeedbackFilter(verticalExtensionEncoder, 0);
-    //verticalExtensionMotor.configSelectedFeedbackSensor(FeedbackDevice.RemoteSensor0);
-
- //   verticalExtensionEncoder.configFactoryDefault(); //reset and configure the encoder
-   // verticalExtensionEncoder.configSensorInitializationStrategy(SensorInitializationStrategy.BootToAbsolutePosition);
     resetSensors();
   }
 
