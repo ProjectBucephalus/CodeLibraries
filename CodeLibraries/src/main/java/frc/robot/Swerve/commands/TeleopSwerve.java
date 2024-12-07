@@ -37,12 +37,12 @@ public class TeleopSwerve extends Command {
     public void execute() 
     {
         /* Get Values, Deadband*/
-        double rotationVal = MathUtil.applyDeadband(rotationSup.getAsDouble(), Constants.ControllConstants.stickDeadband);
+        double rotationVal = MathUtil.applyDeadband(rotationSup.getAsDouble(), Constants.ControlConstants.stickDeadband);
         double translationVal = translationSup.getAsDouble();
         double strafeVal = strafeSup.getAsDouble();
         double brakeVal = brakeSup.getAsDouble();
         boolean brakeInvert = brakeInvertSup.getAsBoolean();
-        if (Math.sqrt(Math.pow(translationSup.getAsDouble(), 2) + Math.pow(strafeSup.getAsDouble(), 2)) <= Constants.ControllConstants.stickDeadband) 
+        if (Math.sqrt(Math.pow(translationSup.getAsDouble(), 2) + Math.pow(strafeSup.getAsDouble(), 2)) <= Constants.ControlConstants.stickDeadband) 
         {
             translationVal = 0;
             strafeVal = 0;   
