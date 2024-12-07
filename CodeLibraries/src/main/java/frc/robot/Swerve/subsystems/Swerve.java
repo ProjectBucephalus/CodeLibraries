@@ -1,7 +1,6 @@
 package frc.robot.Swerve.subsystems;
 
 import frc.robot.Swerve.util.SwerveModule;
-import frc.robot.Swerve.util.GeoFenceObject;
 import frc.robot.Swerve.constants.Constants;
 
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -46,11 +45,11 @@ public class Swerve extends SubsystemBase {
     // | #                                                                                    # | //
 
 
-    private static double speedBase = Constants.ControllConstants.speedBase;
-    private static double speedMax = Constants.ControllConstants.speedMax;
-    private static double speedMin = Constants.ControllConstants.speedMin;
-    private static double speedAngle = Constants.ControllConstants.speedAngle;
-    private static double speedRot = Constants.ControllConstants.speedRot;
+    private static double speedBase = Constants.ControlConstants.speedBase;
+    private static double speedMax = Constants.ControlConstants.speedMax;
+    private static double speedMin = Constants.ControlConstants.speedMin;
+    private static double speedAngle = Constants.ControlConstants.speedAngle;
+    private static double speedRot = Constants.ControlConstants.speedRot;
     private static double targetAngle = 0;
     private static double robotRadius = Constants.GeoFencing.robotBuffer;
     private boolean manualAngleFlag = false;

@@ -11,7 +11,9 @@ import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import frc.lib.math.Conversions;
+import frc.robot.Swerve.Robot;
+import frc.robot.Swerve.constants.Constants;
+import frc.robot.Swerve.util.Conversions;
 import frc.robot.Swerve.util.SwerveModuleConstants;
 
 public class SwerveModule {

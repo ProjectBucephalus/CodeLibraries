@@ -8,7 +8,6 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
-import edu.wpi.first.math.util.Units;
 import frc.robot.Swerve.util.COTSTalonFXSwerveConstants;
 import frc.robot.Swerve.util.SwerveModuleConstants;
 
@@ -17,7 +16,7 @@ import frc.robot.Swerve.util.GeoFenceObject;
 public final class Constants 
 {
     
-    public static final class ControllConstants
+    public static final class ControlConstants
     {
         public static final double stickDeadband = 0.1;
         /** Maximum robot speed when accelerated, relative to maximum uncapped speed */

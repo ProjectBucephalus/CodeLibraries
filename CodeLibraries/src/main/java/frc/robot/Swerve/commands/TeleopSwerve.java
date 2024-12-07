@@ -1,14 +1,12 @@
 package frc.robot.Swerve.commands;
 
-import frc.robot.Constants;
-import frc.robot.GANG_SHOW_CONSTANTS;
-import frc.robot.subsystems.Swerve;
+import frc.robot.Swerve.constants.Constants;
+import frc.robot.Swerve.subsystems.Swerve;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 
 
