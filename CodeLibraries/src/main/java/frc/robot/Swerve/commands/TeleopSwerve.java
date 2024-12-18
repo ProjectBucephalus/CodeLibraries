@@ -16,11 +16,10 @@ public class TeleopSwerve extends Command {
     private DoubleSupplier strafeSup;
     private DoubleSupplier rotationSup;
     private DoubleSupplier brakeSup;
-    private BooleanSupplier brakeInvertSup;
-    private BooleanSupplier robotCentricSup;
+    private BooleanSupplier fieldCentricSup;
     private BooleanSupplier fencedSup;
 
-    public TeleopSwerve(Swerve s_Swerve, DoubleSupplier translationSup, DoubleSupplier strafeSup, DoubleSupplier rotationSup, DoubleSupplier brakeSup, BooleanSupplier brakeInvertSup, BooleanSupplier robotCentricSup, BooleanSupplier fencedSup) {
+    public TeleopSwerve(Swerve s_Swerve, DoubleSupplier translationSup, DoubleSupplier strafeSup, DoubleSupplier rotationSup, DoubleSupplier brakeSup, BooleanSupplier fieldCentricSup, BooleanSupplier fencedSup) {
         this.s_Swerve = s_Swerve;
         addRequirements(s_Swerve);
 
@@ -28,8 +27,7 @@ public class TeleopSwerve extends Command {
         this.strafeSup = strafeSup;
         this.rotationSup = rotationSup;
         this.brakeSup = brakeSup;
-        this.brakeInvertSup = brakeInvertSup;
-        this.robotCentricSup = robotCentricSup;
+        this.fieldCentricSup = fieldCentricSup;
         this.fencedSup = fencedSup;
     }
 
@@ -41,22 +39,33 @@ public class TeleopSwerve extends Command {
         double translationVal = translationSup.getAsDouble();
         double strafeVal = strafeSup.getAsDouble();
         double brakeVal = brakeSup.getAsDouble();
-        boolean brakeInvert = brakeInvertSup.getAsBoolean();
         if (Math.sqrt(Math.pow(translationSup.getAsDouble(), 2) + Math.pow(strafeSup.getAsDouble(), 2)) <= Constants.ControlConstants.stickDeadband) 
         {
             translationVal = 0;
             strafeVal = 0;   
         }
 
-        s_Swerve.drive
-        (
-            translationVal,
-            strafeVal, 
-            rotationVal, 
-            brakeVal,
-            brakeInvert,
-            true,
-            !fencedSup.getAsBoolean()
-        );
+        if (fieldCentricSup.getAsBoolean())
+        {
+            s_Swerve.driveFenced
+            (
+                translationVal,
+                strafeVal, 
+                rotationVal, 
+                brakeVal,
+                fencedSup.getAsBoolean()
+            );
+        }
+        else
+        {
+            s_Swerve.drive
+            (
+                translationVal, 
+                strafeVal, 
+                rotationVal, 
+                brakeVal, 
+                fieldCentricSup.getAsBoolean()
+            );
+        }
     }
 }

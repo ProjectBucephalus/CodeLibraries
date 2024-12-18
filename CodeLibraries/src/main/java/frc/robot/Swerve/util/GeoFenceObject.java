@@ -120,7 +120,7 @@ public class GeoFenceObject
             double motionN   = ((distanceX * motionXY.getX()) + (distanceY * motionXY.getY())) / distanceN;
             double motionT   = ((distanceX * motionXY.getY()) - (distanceY * motionXY.getX())) / distanceN;
             // Clamps the normal motion, i.e. motion towards the point, in order to clamp robot speed
-            motionN = Math.min(motionN, motionN * clamp(distanceN-(robotR + radius), 0, buffer) / (Math.max(distanceX,distanceY) * buffer));
+            motionN = Math.min(motionN, motionN * Limiter.clamp(distanceN-(robotR + radius), 0, buffer) / (Math.max(distanceX,distanceY) * buffer));
             // Converts clamped motion from normal back to X and Y
             double motionX   = ((motionN * distanceX) - (motionT * distanceY)) / distanceN;
             double motionY   = ((motionN * distanceY) + (motionT * distanceX)) / distanceN;
@@ -147,9 +147,6 @@ public class GeoFenceObject
             // orth. v. diagonal v. internal
             double motionX = motionXY.getX();
             double motionY = motionXY.getY();
-            double motionT;
-            double motionN;
-            double distanceN;
             
             switch (objectType) 
             {
@@ -172,7 +169,7 @@ public class GeoFenceObject
                         else // W Cardinal
                         {
                             distanceToEdgeX = (xLimit - radius) - (robotXY.getX() + robotR); 
-                            motionX = Math.min(motionX, (clamp(distanceToEdgeX, 0, buffer)) / buffer);
+                            motionX = Math.min(motionX, (Limiter.clamp(distanceToEdgeX, 0, buffer)) / buffer);
                         }
                     }
                     else if (robotXY.getX() > xLimit + xSize + (robotR + radius))
@@ -188,7 +185,7 @@ public class GeoFenceObject
                         else // E Cardinal
                         {
                             distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit + xSize + radius);
-                            motionX = Math.max(motionX, (-clamp(distanceToEdgeX, 0, buffer)) / buffer);
+                            motionX = Math.max(motionX, (-Limiter.clamp(distanceToEdgeX, 0, buffer)) / buffer);
                         }
                     }
                     else 
@@ -196,17 +193,17 @@ public class GeoFenceObject
                         if (robotXY.getY() < yLimit - (robotR + radius)) // S Cardinal
                         {
                             distanceToEdgeY = (yLimit - radius) - (robotXY.getY() + robotR);
-                            motionY = Math.min(motionY, (clamp(distanceToEdgeY, 0, buffer)) / buffer);
+                            motionY = Math.min(motionY, (Limiter.clamp(distanceToEdgeY, 0, buffer)) / buffer);
                         } 
                         else if (robotXY.getY() > yLimit + ySize + (robotR + radius)) // N Cardinal
                         {
                             distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit + ySize + radius);
-                            motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
+                            motionY = Math.max(motionY, (-Limiter.clamp(distanceToEdgeY, 0, buffer)) / buffer);
                         }
                         else // Center (you've met a terrible fate *insert kazoo music here*)
                         {
-                            motionX = clamp(motionX, -0.5, 0.5);
-                            motionY = clamp(motionY, -0.5, 0.5);                                  
+                            motionX = Limiter.clamp(motionX, -0.5, 0.5);
+                            motionY = Limiter.clamp(motionY, -0.5, 0.5);                                  
                         } 
                     }
                     return new Translation2d(motionX, motionY);
@@ -220,23 +217,23 @@ public class GeoFenceObject
                     if (motionX > 0)
                     {   
                         distanceToEdgeX = (xLimit + xSize - radius) - (robotXY.getX() + robotR); 
-                        motionX = Math.min(motionX, (clamp(distanceToEdgeX, 0, buffer)) / buffer);
+                        motionX = Math.min(motionX, (Limiter.clamp(distanceToEdgeX, 0, buffer)) / buffer);
                     }
                     else if (motionX < 0)
                     {   
                         distanceToEdgeX = (robotXY.getX() - robotR) - (xLimit + radius);
-                        motionX = Math.max(motionX, (-clamp(distanceToEdgeX, 0, buffer)) / buffer);
+                        motionX = Math.max(motionX, (-Limiter.clamp(distanceToEdgeX, 0, buffer)) / buffer);
                     }
 
                     if (motionY > 0)
                     {   
                         distanceToEdgeY = (yLimit + ySize - radius) - (robotXY.getY() + robotR);
-                        motionY = Math.min(motionY, (clamp(distanceToEdgeY, 0, buffer)) / buffer);
+                        motionY = Math.min(motionY, (Limiter.clamp(distanceToEdgeY, 0, buffer)) / buffer);
                     }
                     else if (motionY < 0)
                     {   
                         distanceToEdgeY = (robotXY.getY() - robotR) - (yLimit + radius);
-                        motionY = Math.max(motionY, (-clamp(distanceToEdgeY, 0, buffer)) / buffer);
+                        motionY = Math.max(motionY, (-Limiter.clamp(distanceToEdgeY, 0, buffer)) / buffer);
                     }
                     return new Translation2d(motionX, motionY);
                 default:
@@ -245,10 +242,7 @@ public class GeoFenceObject
             return motionXY;
         }
 
-        private double clamp(double value, double min, double max)
-        {
-            return Math.min(Math.max(value, Math.min(min,max)), Math.max(min,max));
-        }
+
 
         public Translation2d[] getObject()
         {

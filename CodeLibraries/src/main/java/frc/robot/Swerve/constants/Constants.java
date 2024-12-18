@@ -19,17 +19,20 @@ public final class Constants
     public static final class ControlConstants
     {
         public static final double stickDeadband = 0.1;
-        /** Maximum robot speed when accelerated, relative to maximum uncapped speed */
-        public static final double speedMax = 0.8;
-        /** Normal robot speed, relative to maximum uncapped speed */
-        public static final double speedBase = 0.5;
+        /** Normal maximum robot speed, relative to maximum uncapped speed */
+        public static final double maxThrottle = 0.8;
         /** Minimum robot speed when braking, relative to maximum uncapped speed */
-        public static final double speedMin = 0.1;
-        public static final double speedAngle = 5;
+        public static final double minThrottle = 0.1;
+        /** Normal maximum rotational robot speed, relative to maximum uncapped rotational speed */
+        public static final double maxRotThrottle = 1;
+        /** Minimum rotational robot speed when braking, relative to maximum uncapped rotational speed */
+        public static final double minRotThrottle = 0.5;
+        /** Scales manual rotation speed */
+        public static final double manualRotationScalar = 5;
         /** Maximum robot rotation speed */
-        public static final double speedRot = 1.3; // 0.02 for angle chasing version
-        
-        
+        public static final double maxRotationSpeed = 1.3; // 0.02 for angle chasing version
+        /** Steering overswing compensation factor */
+        public static final double overswingReduction = 2;
     }
     
     public final class GeoFencing

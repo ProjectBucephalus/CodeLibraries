@@ -1,5 +1,7 @@
 package frc.robot.Swerve.subsystems;
 
+import frc.robot.Swerve.util.GeoFenceObject;
+import frc.robot.Swerve.util.Limiter;
 import frc.robot.Swerve.util.SwerveModule;
 import frc.robot.Swerve.constants.Constants;
 
@@ -11,6 +13,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import com.ctre.phoenix6.configs.Pigeon2Configuration;
 import com.ctre.phoenix6.hardware.Pigeon2;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -20,10 +23,19 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Swerve extends SubsystemBase {
     public static SwerveDriveOdometry swerveOdometry;
-    public SwerveModule[] mSwerveMods;
-    public Pigeon2 gyro;
+    public static SwerveModule[] mSwerveMods;
+    public static Pigeon2 gyro;
 
-    public double MaxDriveSpeed = Constants.Swerve.maxSpeed;
+    private double maxDriveSpeed = Constants.Swerve.maxSpeed;
+    private static double maxThrottle = Constants.ControlConstants.maxThrottle;
+    private static double minThrottle = Constants.ControlConstants.minThrottle;
+    private static double maxRotThrottle = Constants.ControlConstants.maxRotThrottle;
+    private static double minRotThrottle = Constants.ControlConstants.minRotThrottle;
+    private static double manualRotationScalar = Constants.ControlConstants.manualRotationScalar;
+    private static double maxRotationSpeed = Constants.ControlConstants.maxRotationSpeed;
+    private static double targetAngle = 0;
+    private static double robotRadius = Constants.GeoFencing.robotBuffer;
+    private boolean manualAngleFlag = false;
 
     public Swerve() {
         gyro = new Pigeon2(Constants.Swerve.pigeonID);
@@ -44,27 +56,223 @@ public class Swerve extends SubsystemBase {
     // | # 5985 Additional drive functions to provide more customisable driving functionality # | //
     // | #                                                                                    # | //
 
+    /**
+     * Converts assorted inputs into a tuneable drive profile
+     * @param translationVal [-1..1] forward drive axis
+     * @param strafeVal [-1..1] sideways drive axis
+     * @param targetDelta [-1..1] rotation axis, changes the target angle for the robot to face
+     * @param brakeVal [0..1] brake/accelerate axis, modifies the stick input between max and min speeds
+     * @param fieldRelative BOOLEAN drive relative to field, false to drive relative to robot front
+     * @param fenced BOOLEAN keep robot within defined geofence
+     * @author 5985
+     */
+    public void drive(double translationVal, double strafeVal, double targetDelta, double brakeVal, boolean fieldRelative)
+    {
+        Translation2d stickInput = new Translation2d(translationVal, strafeVal);
 
-    private static double speedBase = Constants.ControlConstants.speedBase;
-    private static double speedMax = Constants.ControlConstants.speedMax;
-    private static double speedMin = Constants.ControlConstants.speedMin;
-    private static double speedAngle = Constants.ControlConstants.speedAngle;
-    private static double speedRot = Constants.ControlConstants.speedRot;
-    private static double targetAngle = 0;
-    private static double robotRadius = Constants.GeoFencing.robotBuffer;
-    private boolean manualAngleFlag = false;
+        if (targetDelta != 0 && !manualAngleFlag)
+        {
+            manualAngleFlag = true;
+        }
 
-    public void setSpeed(double newBaseSpeed)
-        {speedBase = newBaseSpeed;}
+        targetAngle = MathUtil.inputModulus(targetAngle, -180, 180); // Wraps value [-180..180]
+        double targetOffset = targetAngle - getHeading().getDegrees(); // Difference between current and target angles
+        
+        /* Optimises targetOffset direction (if direct turn would go further than 180 degrees, go opposite direction) */
+        if (targetOffset > 180)
+        { targetOffset -= 360; }
+        else if (targetOffset < -180)
+        { targetOffset += 360; }
+        
+        /* 
+         *  Triggers the first cycle after manual input ends 
+         *  Reduces target offset and target angle to reduce overswing  
+         */
+        if (targetDelta == 0 && manualAngleFlag)
+        {
+            manualAngleFlag = false;
+            targetOffset = targetOffset / Constants.ControlConstants.overswingReduction;
+            targetAngle = targetAngle - targetOffset;
+        }
+        /* Changes target angle based on joystick position * scalar value */
+        else
+        {
+            targetAngle = getHeading().getDegrees() + targetDelta * manualRotationScalar;
+        }
 
-    public void setSpeedMax(double newMaxSpeed)
-        {speedMax = newMaxSpeed;}
+        /* Calculates rotation value based on target offset and max speed */
+        double rotationVal = Limiter.clamp(targetOffset * maxRotationSpeed, 1, -1);
+        
+        /** Checks if brakes are at all pressed; if not, skips calculations */
+        if(brakeVal != 0)
+        {       
+            /* 
+            *  Identical calculations for rotation and translation, different values
+            *  Calculates brake range and multiplies by brake value, then inverts to get proper speed scalar 
+            *  Multiples input speed by calculated speed scalar
+            */
+            stickInput = stickInput.times(maxThrottle - ((maxThrottle - minThrottle) * brakeVal));
+            rotationVal *= (maxRotThrottle - ((maxRotThrottle - minRotThrottle) * brakeVal));
+        }
+        else
+        {   
+            /* If no brakes applied, scales input speed by maximum speed */
+            stickInput = stickInput.times(maxThrottle);
+        }
 
-    public void setSpeedMin(double newMinSpeed)
-        {speedMin = newMinSpeed;}
+        drive
+        (
+            stickInput, 
+            rotationVal,
+            fieldRelative, 
+            true
+        );
+    }    
 
-    public void setSpeedAngle(double newRotationSpeed)
-        {speedAngle = newRotationSpeed;}
+    /**
+     * Converts assorted inputs into a tuneable drive profile
+     * @param translationVal [-1..1] forward drive axis
+     * @param strafeVal [-1..1] sideways drive axis
+     * @param targetDelta [-1..1] rotation axis, changes the target angle for the robot to face
+     * @param brakeVal [0..1] brake/accelerate axis, modifies the stick input between max and min speeds
+     * @param fieldRelative BOOLEAN drive relative to field, false to drive relative to robot front
+     * @param fenced BOOLEAN keep robot within defined geofence
+     * @author 5985
+     */
+    public void drive(double translationVal, double strafeVal, double targetDelta, double brakeVal)
+    {
+        drive(translationVal, strafeVal, targetDelta, brakeVal, true);
+    }
+
+    /**
+     * Converts assorted inputs into a tuneable drive profile
+     * @param translationVal [-1..1] forward drive axis
+     * @param strafeVal [-1..1] sideways drive axis
+     * @param targetDelta [-1..1] rotation axis, changes the target angle for the robot to face
+     * @param brakeVal [0..1] brake/accelerate axis, modifies the stick input between max and min speeds
+     * @param fieldRelative BOOLEAN drive relative to field, false to drive relative to robot front
+     * @param fenced BOOLEAN keep robot within defined geofence
+     * @author 5985
+     */
+    public void driveFenced(double translationVal, double strafeVal, double targetDelta, double brakeVal, boolean fenced)
+    {
+        Translation2d motionXY = new Translation2d(translationVal,strafeVal);
+        if (fenced)
+        {
+            for (int i = 0; i < Constants.GeoFencing.fieldGeoFence.length; i++)
+            {
+                motionXY = Constants.GeoFencing.fieldGeoFence[i].dampMotion(getPose().getTranslation(), motionXY, robotRadius);
+            }
+        }
+        drive(motionXY.getX(), motionXY.getY(), targetDelta, brakeVal, true);
+    }
+
+    // | #                                                                                    # | //
+    // | # 5985 Additional drive functions to provide more customisable driving functionality # | //
+    // ------------------------------------------------------------------------------------------ //
+
+
+    public void drive(Translation2d translation, double rotation, boolean fieldRelative, boolean isOpenLoop)
+    {
+        SwerveModuleState[] swerveModuleStates =
+            Constants.Swerve.swerveKinematics.toSwerveModuleStates(
+                fieldRelative ? ChassisSpeeds.fromFieldRelativeSpeeds(
+                                    translation.getX(), 
+                                    translation.getY(), 
+                                    rotation, 
+                                    getHeading()
+                                )
+                                : new ChassisSpeeds(
+                                    translation.getX(), 
+                                    translation.getY(), 
+                                    rotation)
+                                );
+        SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, maxDriveSpeed);
+
+        for(SwerveModule mod : mSwerveMods){
+            mod.setDesiredState(swerveModuleStates[mod.moduleNumber], isOpenLoop);
+        }
+    }    
+
+    /* Used by SwerveControllerCommand in Auto */
+    public void setModuleStates(SwerveModuleState[] desiredStates) 
+    {
+        SwerveDriveKinematics.desaturateWheelSpeeds(desiredStates, maxDriveSpeed);
+        
+        for(SwerveModule mod : mSwerveMods){
+            mod.setDesiredState(desiredStates[mod.moduleNumber], false);
+        }
+    }
+
+    public SwerveModuleState[] getModuleStates()
+    {
+        SwerveModuleState[] states = new SwerveModuleState[4];
+        for(SwerveModule mod : mSwerveMods){
+            states[mod.moduleNumber] = mod.getState();
+        }
+        return states;
+    }
+
+    public static SwerveModulePosition[] getModulePositions()
+    {
+        SwerveModulePosition[] positions = new SwerveModulePosition[4];
+        for(SwerveModule mod : mSwerveMods){
+            positions[mod.moduleNumber] = mod.getPosition();
+        }
+        return positions;
+    }
+
+    public static Pose2d getPose() 
+    {
+        return swerveOdometry.getPoseMeters();
+    }
+
+    public void setPose(Pose2d pose) 
+    {
+        swerveOdometry.resetPosition(getGyroYaw(), getModulePositions(), pose);
+    }
+
+    public Rotation2d getHeading()
+    {
+        return getPose().getRotation();
+    }
+
+    public void setHeading(Rotation2d heading)
+    {
+        swerveOdometry.resetPosition(getGyroYaw(), getModulePositions(), new Pose2d(getPose().getTranslation(), heading));
+    }
+
+    public static void zeroHeading()
+    {
+        swerveOdometry.resetPosition(getGyroYaw(), getModulePositions(), new Pose2d(getPose().getTranslation(), new Rotation2d()));
+    }
+
+    public static Rotation2d getGyroYaw() 
+    {
+        return Rotation2d.fromDegrees(gyro.getYaw().getValue());
+    }
+
+    public void resetModulesToAbsolute()
+    {
+        for(SwerveModule mod : mSwerveMods){
+            mod.resetToAbsolute();
+        }
+    }
+
+    public void setMaxThrottle(double newMaxSpeed)
+        {maxThrottle = newMaxSpeed;}
+
+    public void setMinThrottle(double newMinSpeed)
+        {minThrottle = newMinSpeed;}
+
+    public void setMaxRotThrottle(double newMaxSpeed)
+        {maxRotThrottle = newMaxSpeed;}
+
+    public void setMinRotThrottle(double newMinSpeed)
+        {minRotThrottle = newMinSpeed;}
+
+    public void setManualRotationScalar(double newRotationSpeed)
+        {manualRotationScalar = newRotationSpeed;}
 
     public double getTarget()
         {return targetAngle;}
@@ -75,7 +283,7 @@ public class Swerve extends SubsystemBase {
     /** Zero robot headding and reset target angle */
     public void zeroHeading(double targetAngle)
     {
-        zeroHeading();
+        Swerve.zeroHeading();
         setTarget(0);
     }
     
@@ -105,225 +313,6 @@ public class Swerve extends SubsystemBase {
         setPose(new Pose2d(new Translation2d(xPos, yPos), getHeading()));
     }
 
-    /**
-     * Converts assorted inputs into a tuneable drive profile
-     * @param translationVal [-1..1] forward drive axis
-     * @param strafeVal [-1..1] sideways drive axis
-     * @param targetDelta [-1..1] rotation axis, changes the target angle for the robot to face
-     * @param brakeVal [0..1] brake/accelerate axis, modifies the stick input between max and min speeds
-     * @param invertBrake BOOLEAN switch brake axis from normal->min to normal->max
-     * @param fieldRelative BOOLEAN drive relative to field, false to drive relative to robot front
-     * @param fenced BOOLEAN keep robot within defined geofence
-     * @author 5985
-     */
-    public void drive(double translationVal, double strafeVal, double targetDelta, double brakeVal, boolean invertBrake, boolean fieldRelative)
-    {
-        Translation2d stickInput = new Translation2d(translationVal, strafeVal);
-        
-        if (targetDelta != 0 && !manualAngleFlag)
-        {
-            manualAngleFlag = true;
-        }
-
-        /*
-        targetAngle = ((targetAngle+180) % 360)-180;
-        double targetOffset = targetAngle - getHeading().getDegrees();
-        if (targetOffset > 180)
-        { targetOffset -= 360; }
-        else if (targetOffset < -180)
-        { targetOffset += 360; }
-        
-        if (targetDelta == 0 && manualAngleFlag)
-        {
-            manualAngleFlag = false;
-            targetOffset = targetOffset/2;
-            targetAngle = targetAngle - targetOffset;
-        }
-        else
-        {
-            targetAngle += targetDelta * speedAngle;
-        }
-
-        double rotationVal = Math.max(Math.min(targetOffset * speedRot, 1), -1);
-        */
-
-        double rotationVal = targetDelta * speedRot;
-        targetAngle = getHeading().getDegrees();
-
-        if(brakeVal != 0)
-        {
-            if(!invertBrake)
-            {
-                stickInput = stickInput.times(speedBase - ((speedBase - speedMin) * brakeVal));
-                //SmartDashboard.putNumber("Throttle:", speedBase - ((speedBase - speedMin) * brakeVal));
-                rotationVal *= (speedBase - ((speedBase - speedMin) * brakeVal))/speedBase;
-            }
-            else
-            {
-                stickInput = stickInput.times(speedBase + ((speedMax - speedBase) * brakeVal));
-                //rotationVal *= (speedBase + ((speedMax - speedBase) * brakeVal))/speedBase;
-            }
-        }
-        else
-        {
-            stickInput = stickInput.times(speedBase);
-        }
-
-        SmartDashboard.putNumber("Stick:", stickInput.getNorm());
-        SmartDashboard.putNumber("Headding:", getHeading().getDegrees());
-        //SmartDashboard.putNumber("Target", targetAngle);
-        //SmartDashboard.putNumber("Delta:", targetDelta);
-        //SmartDashboard.putNumber("Rotation:", rotationVal);
-        SmartDashboard.putNumber("Brake:", brakeVal);
-
-        drive
-        (
-            stickInput, 
-            rotationVal,
-            fieldRelative, 
-            true
-        );
-    }    
-
-    /**
-     * Converts assorted inputs into a tuneable drive profile
-     * @param translationVal [-1..1] forward drive axis
-     * @param strafeVal [-1..1] sideways drive axis
-     * @param targetDelta [-1..1] rotation axis, changes the target angle for the robot to face
-     * @param brakeVal [0..1] brake/accelerate axis, modifies the stick input between max and min speeds
-     * @param invertBrake BOOLEAN switch brake axis from normal->min to normal->max
-     * @param fieldRelative BOOLEAN drive relative to field, false to drive relative to robot front
-     * @param fenced BOOLEAN keep robot within defined geofence
-     * @author 5985
-     */
-    public void drive(double translationVal, double strafeVal, double targetDelta, double brakeVal, boolean invertBrake, boolean fieldRelative, boolean fenced)
-    {
-        Translation2d motionXY = new Translation2d(translationVal,strafeVal);
-        if (fenced)
-        {
-            for (int i = 0; i < Constants.GeoFencing.fieldGeoFence.length; i++)
-            {
-                motionXY = Constants.GeoFencing.fieldGeoFence[i].dampMotion(getPose().getTranslation(), motionXY, robotRadius);
-            }
-        }
-        drive(motionXY.getX(), motionXY.getY(), targetDelta, brakeVal, invertBrake, true);
-    }
-
-    /**
-     * Converts assorted inputs into a tuneable drive profile
-     * @param translationVal [-1..1] forward drive axis
-     * @param strafeVal [-1..1] sideways drive axis
-     * @param targetDelta [-1..1] rotation axis, changes the target angle for the robot to face
-     * @param brakeVal [0..1] brake/accelerate axis, modifies the stick input between max and min speeds
-     * @param invertBrake BOOLEAN switch brake axis from normal->min to normal->max
-     * @param fieldRelative BOOLEAN drive relative to field, false to drive relative to robot front
-     * @param fenced BOOLEAN keep robot within defined geofence
-     * @author 5985
-     */
-    public void drive(double translationVal, double strafeVal, double targetDelta, double brakeVal, boolean invertBrake)
-    {
-        drive(translationVal, strafeVal, targetDelta, brakeVal, invertBrake, true);
-    }
-
-    /**
-     * Converts assorted inputs into a tuneable drive profile
-     * @param translationVal [-1..1] forward drive axis
-     * @param strafeVal [-1..1] sideways drive axis
-     * @param targetDelta [-1..1] rotation axis, changes the target angle for the robot to face
-     * @param brakeVal [0..1] brake/accelerate axis, modifies the stick input between max and min speeds
-     * @param invertBrake BOOLEAN switch brake axis from normal->min to normal->max
-     * @param fieldRelative BOOLEAN drive relative to field, false to drive relative to robot front
-     * @param fenced BOOLEAN keep robot within defined geofence
-     * @author 5985
-     */
-    public void drive(double translationVal, double strafeVal, double targetDelta, double brakeVal)
-    {
-        drive(translationVal, strafeVal, targetDelta, brakeVal, false, true);
-    }
-
-
-    // | #                                                                                    # | //
-    // | # 5985 Additional drive functions to provide more customisable driving functionality # | //
-    // ------------------------------------------------------------------------------------------ //
-
-
-    public void drive(Translation2d translation, double rotation, boolean fieldRelative, boolean isOpenLoop)
-    {
-        SwerveModuleState[] swerveModuleStates =
-            Constants.Swerve.swerveKinematics.toSwerveModuleStates(
-                fieldRelative ? ChassisSpeeds.fromFieldRelativeSpeeds(
-                                    translation.getX(), 
-                                    translation.getY(), 
-                                    rotation, 
-                                    getHeading()
-                                )
-                                : new ChassisSpeeds(
-                                    translation.getX(), 
-                                    translation.getY(), 
-                                    rotation)
-                                );
-        SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MaxDriveSpeed);
-
-        for(SwerveModule mod : mSwerveMods){
-            mod.setDesiredState(swerveModuleStates[mod.moduleNumber], isOpenLoop);
-        }
-    }    
-
-    /* Used by SwerveControllerCommand in Auto */
-    public void setModuleStates(SwerveModuleState[] desiredStates) {
-        SwerveDriveKinematics.desaturateWheelSpeeds(desiredStates, MaxDriveSpeed);
-        
-        for(SwerveModule mod : mSwerveMods){
-            mod.setDesiredState(desiredStates[mod.moduleNumber], false);
-        }
-    }
-
-    public SwerveModuleState[] getModuleStates(){
-        SwerveModuleState[] states = new SwerveModuleState[4];
-        for(SwerveModule mod : mSwerveMods){
-            states[mod.moduleNumber] = mod.getState();
-        }
-        return states;
-    }
-
-    public SwerveModulePosition[] getModulePositions(){
-        SwerveModulePosition[] positions = new SwerveModulePosition[4];
-        for(SwerveModule mod : mSwerveMods){
-            positions[mod.moduleNumber] = mod.getPosition();
-        }
-        return positions;
-    }
-
-    public static Pose2d getPose() {
-        return swerveOdometry.getPoseMeters();
-    }
-
-    public void setPose(Pose2d pose) {
-        swerveOdometry.resetPosition(getGyroYaw(), getModulePositions(), pose);
-    }
-
-    public Rotation2d getHeading(){
-        return getPose().getRotation();
-    }
-
-    public void setHeading(Rotation2d heading){
-        swerveOdometry.resetPosition(getGyroYaw(), getModulePositions(), new Pose2d(getPose().getTranslation(), heading));
-    }
-
-    public void zeroHeading(){
-        swerveOdometry.resetPosition(getGyroYaw(), getModulePositions(), new Pose2d(getPose().getTranslation(), new Rotation2d()));
-    }
-
-    public Rotation2d getGyroYaw() {
-        return Rotation2d.fromDegrees(gyro.getYaw().getValue());
-    }
-
-    public void resetModulesToAbsolute(){
-        for(SwerveModule mod : mSwerveMods){
-            mod.resetToAbsolute();
-        }
-    }
-
     @Override
     public void periodic(){
         swerveOdometry.update(getGyroYaw(), getModulePositions());
@@ -336,7 +325,5 @@ public class Swerve extends SubsystemBase {
             //SmartDashboard.putNumber("Mod " + mod.moduleNumber + " Angle", mod.getPosition().angle.getDegrees());
             //SmartDashboard.putNumber("Mod " + mod.moduleNumber + " Velocity", mod.getState().speedMetersPerSecond);    
         }
-
-        //MaxDriveSpeed = SmartDashboard.getNumber("Max Drive Speed (m/s)",Constants.Swerve.maxSpeed);
     }
 }
