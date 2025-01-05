@@ -12,6 +12,7 @@ import frc.robot.Swerve.util.COTSTalonFXSwerveConstants;
 import frc.robot.Swerve.util.SwerveModuleConstants;
 
 import frc.robot.Swerve.util.GeoFenceObject;
+import frc.robot.Swerve.util.GeoFenceObject.ObjectTypes;
 
 public final class Constants 
 {
@@ -20,7 +21,7 @@ public final class Constants
     {
         public static final double stickDeadband = 0.1;
         /** Normal maximum robot speed, relative to maximum uncapped speed */
-        public static final double maxThrottle = 0.8;
+        public static final double maxThrottle = 0.3;
         /** Minimum robot speed when braking, relative to maximum uncapped speed */
         public static final double minThrottle = 0.1;
         /** Normal maximum rotational robot speed, relative to maximum uncapped rotational speed */
@@ -28,46 +29,50 @@ public final class Constants
         /** Minimum rotational robot speed when braking, relative to maximum uncapped rotational speed */
         public static final double minRotThrottle = 0.5;
         /** Scales manual rotation speed */
-        public static final double manualRotationScalar = 5;
+        public static final double manualRotationScalar = 15;
         /** Maximum robot rotation speed */
-        public static final double maxRotationSpeed = 1.3; // 0.02 for angle chasing version
+        public static final double maxRotationSpeed = 3;
         /** Steering overswing compensation factor */
         public static final double overswingReduction = 2;
     }
     
-    public final class GeoFencing
+    public final class GeoFencing // TODO: Move this to FieldConstants file.
     {   
         // Relative to the centre of the robot, in direction the robot is facing
         // These values are the distance in metres to the virtual wall the robot will stop at
         // 0 means the wall is running through the middle of the robot
         // negative distances will have the robot start outside the area, and can only move into it
         /** Metres the robot can travel left */
-        public static final double fieldLeft = 0.0;
+        public static final double fieldLeft = 3;
 
         /** Metres the robot can travel right */
-        public static final double fieldRight = 16.5;
+        public static final double fieldRight = 6;
 
         /** Metres the robot can travel forwards */
-        public static final double fieldFront = 8.2;
+        public static final double fieldFront = 3;
 
         /** Metres the robot can travel back */
-        public static final double fieldBack = 0;    
+        public static final double fieldBack = 3;    
 
         public static final GeoFenceObject field = new GeoFenceObject
         (
             -fieldBack, 
             -fieldRight, 
-            fieldBack + fieldFront, 
-            fieldLeft + fieldRight, 
-            GeoFenceObject.ObjectTypes.walls,
-            1.0,
-            0.0
+            fieldFront, 
+            fieldLeft, 
+            0.5,
+            0.0,
+            ObjectTypes.walls
         );
         
-        public static final GeoFenceObject[] fieldGeoFence = {field};
+        public static final GeoFenceObject test1 = new GeoFenceObject(1.25, 1.25, 0.2);
+        public static final GeoFenceObject test2 = new GeoFenceObject(-0.5,-2.5,0.5,-4,0.5,0,ObjectTypes.box);
+        public static final GeoFenceObject test3 = new GeoFenceObject(0, 0.75, -1.5, 1.8, 0.5, 0.2);
+
+        public static final GeoFenceObject[] fieldGeoFence = {field,test1,test2,test3};
         
         /** Radius from robot centre in metres where geofence is triggered */
-        public static final double robotBuffer = 0.4;
+        public static final double robotRadius = 0.55;
         
         //public static OdometryReadout fieldReadout = new OdometryReadout(0.5);
         //fieldReadout.addRectangle(fieldGeoFence[0].getObject);
@@ -75,14 +80,14 @@ public final class Constants
 
     public static final class Swerve
     {
-        public static final int pigeonID = 0;
+        public static final int pigeonID = 5;
 
         public static final COTSTalonFXSwerveConstants chosenModule = 
-        COTSTalonFXSwerveConstants.WCP.SwerveXFlipped.KrakenX60(COTSTalonFXSwerveConstants.WCP.SwerveXFlipped.driveRatios.X2_10);
+        COTSTalonFXSwerveConstants.SDS.MK4i.Falcon500(COTSTalonFXSwerveConstants.SDS.MK4i.driveRatios.L2);
         
         /* Drivetrain Constants */
-        public static final double trackWidth = 0.28;
-        public static final double wheelBase = 0.28;
+        public static final double trackWidth = 0.48;
+        public static final double wheelBase = 0.48;
         public static final double wheelCircumference = chosenModule.wheelCircumference;
 
         /* Swerve Kinematics 
@@ -152,8 +157,8 @@ public final class Constants
         /* Front Left Module - Module 0 */
         public static final class Mod0
         { 
-            public static final int driveMotorID = 4;
-            public static final int angleMotorID = 3;
+            public static final int driveMotorID = 9;
+            public static final int angleMotorID = 11;
             public static final int canCoderID = 10;
             public static final Rotation2d angleOffset = Rotation2d.fromDegrees(90.0);
             public static final SwerveModuleConstants constants = 
@@ -164,8 +169,8 @@ public final class Constants
         public static final class Mod1
         { 
             public static final int driveMotorID = 6;
-            public static final int angleMotorID = 5;
-            public static final int canCoderID = 11;
+            public static final int angleMotorID = 8;
+            public static final int canCoderID = 7;
             public static final Rotation2d angleOffset = Rotation2d.fromDegrees(180.0);
             public static final SwerveModuleConstants constants = 
                 new SwerveModuleConstants(driveMotorID, angleMotorID, canCoderID, angleOffset);
@@ -174,9 +179,9 @@ public final class Constants
         /* Back Left Module - Module 2 */
         public static final class Mod2
         { 
-            public static final int driveMotorID = 2;
-            public static final int angleMotorID = 1;
-            public static final int canCoderID = 9;
+            public static final int driveMotorID = 16;
+            public static final int angleMotorID = 18;
+            public static final int canCoderID = 17;
             public static final Rotation2d angleOffset = Rotation2d.fromDegrees(0.0);
             public static final SwerveModuleConstants constants = 
                 new SwerveModuleConstants(driveMotorID, angleMotorID, canCoderID, angleOffset);
@@ -185,9 +190,9 @@ public final class Constants
         /* Back Right Module - Module 3 */
         public static final class Mod3
         { 
-            public static final int driveMotorID = 8;
-            public static final int angleMotorID = 7;
-            public static final int canCoderID = 12;
+            public static final int driveMotorID = 1;
+            public static final int angleMotorID = 3;
+            public static final int canCoderID = 2;
             public static final Rotation2d angleOffset = Rotation2d.fromDegrees(270.0);
             public static final SwerveModuleConstants constants = 
                 new SwerveModuleConstants(driveMotorID, angleMotorID, canCoderID, angleOffset);

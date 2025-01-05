@@ -1,6 +1,28 @@
 package frc.robot.Swerve.util;
 
-public class Conversions {
+public class Conversions 
+{
+    /**
+     * Clamps value [-1..1]
+     * @param value Value to clamp
+     * @return Clamped value
+     */
+    public static double clamp(double value)
+    {
+        return clamp(value, -1, 1);
+    }
+
+    /**
+     * Clamps values to parameters
+     * @param value Value to clamp
+     * @param min Minimum value
+     * @param max Maximum value
+     * @return Clamped value
+     */
+    public static double clamp(double value, double min, double max)
+    {
+        return Math.min(Math.max(value, Math.min(min,max)), Math.max(min,max));
+    }
     
     /**
      * @param wheelRPS Wheel Velocity: (in Rotations per Second)

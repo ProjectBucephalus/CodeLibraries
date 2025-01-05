@@ -1,7 +1,7 @@
 package frc.robot.Swerve.subsystems;
 
 import frc.robot.Swerve.util.GeoFenceObject;
-import frc.robot.Swerve.util.Limiter;
+import frc.robot.Swerve.util.Conversions;
 import frc.robot.Swerve.util.SwerveModule;
 import frc.robot.Swerve.constants.Constants;
 
@@ -26,6 +26,8 @@ public class Swerve extends SubsystemBase {
     public static SwerveModule[] mSwerveMods;
     public static Pigeon2 gyro;
 
+    private static GeoFenceObject[] fieldGeoFence = Constants.GeoFencing.fieldGeoFence;
+
     private double maxDriveSpeed = Constants.Swerve.maxSpeed;
     private static double maxThrottle = Constants.ControlConstants.maxThrottle;
     private static double minThrottle = Constants.ControlConstants.minThrottle;
@@ -34,7 +36,7 @@ public class Swerve extends SubsystemBase {
     private static double manualRotationScalar = Constants.ControlConstants.manualRotationScalar;
     private static double maxRotationSpeed = Constants.ControlConstants.maxRotationSpeed;
     private static double targetAngle = 0;
-    private static double robotRadius = Constants.GeoFencing.robotBuffer;
+    private static double robotRadius = Constants.GeoFencing.robotRadius;
     private boolean manualAngleFlag = false;
 
     public Swerve() {
@@ -94,14 +96,18 @@ public class Swerve extends SubsystemBase {
             targetOffset = targetOffset / Constants.ControlConstants.overswingReduction;
             targetAngle = targetAngle - targetOffset;
         }
-        /* Changes target angle based on joystick position * scalar value */
+        /* Changes target angle based on scaled joystick position */
         else
         {
             targetAngle = getHeading().getDegrees() + targetDelta * manualRotationScalar;
         }
 
+        /* Apply deadband to target offset to prevent jittering */
+        if (Math.abs(targetOffset) <= Constants.ControlConstants.stickDeadband)
+            {targetOffset = 0;}
+
         /* Calculates rotation value based on target offset and max speed */
-        double rotationVal = Limiter.clamp(targetOffset * maxRotationSpeed, 1, -1);
+        double rotationVal = Conversions.clamp(Math.toRadians(targetOffset) * maxRotationSpeed);
         
         /** Checks if brakes are at all pressed; if not, skips calculations */
         if(brakeVal != 0)
@@ -159,9 +165,12 @@ public class Swerve extends SubsystemBase {
         Translation2d motionXY = new Translation2d(translationVal,strafeVal);
         if (fenced)
         {
-            for (int i = 0; i < Constants.GeoFencing.fieldGeoFence.length; i++)
+            // Read down the list of geofence objects
+            // Outer wall is index 0, so has highest authority by being processed last
+            for (int i = fieldGeoFence.length - 1; i >= 0; i--)
             {
-                motionXY = Constants.GeoFencing.fieldGeoFence[i].dampMotion(getPose().getTranslation(), motionXY, robotRadius);
+                Translation2d inputDamping = fieldGeoFence[i].dampMotion(getPose().getTranslation(), motionXY, robotRadius);
+                motionXY = inputDamping;
             }
         }
         drive(motionXY.getX(), motionXY.getY(), targetDelta, brakeVal, true);
