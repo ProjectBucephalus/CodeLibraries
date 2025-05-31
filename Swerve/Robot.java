@@ -2,19 +2,31 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.Swerve;
+package frc.robot;
 
-import com.pathplanner.lib.util.PathPlannerLogging;
+import java.util.ArrayList;
 
+import com.ctre.phoenix6.SignalLogger;
+import com.pathplanner.lib.commands.PathfindingCommand;
+import com.pathplanner.lib.pathfinding.Pathfinding;
+
+import edu.wpi.first.epilogue.Epilogue;
+import edu.wpi.first.epilogue.Logged;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.DataLogManager;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.robot.Swerve.constants.CTREConfigs;
-import frc.robot.Swerve.constants.FieldConstants;
+import frc.robot.subsystems.Limelight;
+import frc.robot.subsystems.AlgaeManipulator;
+import frc.robot.subsystems.CoralManipulator;
+import frc.robot.util.FieldUtils;
+import frc.robot.util.SD;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -22,29 +34,36 @@ import frc.robot.Swerve.constants.FieldConstants;
  * the package after creating this project, you must also update the build.gradle file in the
  * project.
  */
-public class Robot extends TimedRobot {
-  public static final CTREConfigs ctreConfigs = new CTREConfigs();
-
-  private Command m_autonomousCommand;
+@Logged
+public class Robot extends TimedRobot 
+{
+  private Command autonomousCommand;
 
   private RobotContainer robotContainer;
 
-  private boolean prevIsRedAlliance = true;
+  private Pose2d robotPose;
 
-  private Field2d autoPosition = new Field2d();
+  private Command warmupCommand;
+  
+  private boolean allianceKnown = false;
 
-
-
-  /**
-   * This function is run when the robot is first started up and should be used for any
-   * initialization code.
-   */
-  @Override
-  public void robotInit() {
-    // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
-    // autonomous chooser on the dashboard.
-    SmartDashboard.putData("Field", autoPosition);
+  public Robot()
+  {
     robotContainer = new RobotContainer();
+    warmupCommand = PathfindingCommand.warmupCommand();
+    warmupCommand.schedule();
+
+    RobotContainer.s_Swerve.getPigeon2().setYaw(0);
+
+    RobotContainer.io_LimelightPort.setThrottle(0);
+    RobotContainer.io_LimelightStbd.setThrottle(0);
+    RobotContainer.io_LimelightPort.setIMUMode(1);
+    RobotContainer.io_LimelightStbd.setIMUMode(1);
+    SignalLogger.enableAutoLogging(false);
+
+    DataLogManager.start("/home/lvuser/logs");
+    DriverStation.startDataLog(DataLogManager.getLog());
+    Epilogue.bind(this);
   }
 
   /**
@@ -55,65 +74,121 @@ public class Robot extends TimedRobot {
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {
-    // Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
-    // commands, running already-scheduled commands, removing finished or interrupted commands,
-    // and running subsystem periodic() methods.  This must be called from the robot's periodic
-    // block in order for anything in the Command-based framework to work.
+  public void robotPeriodic() 
+  {
+    robotPose = RobotContainer.swerveState.Pose;
+
+    if (robotPose.getX() <= 0.25 && robotPose.getY() <= 0.25) 
+    {
+      if (allianceKnown && DriverStation.getAlliance().get() == Alliance.Blue)
+        RobotContainer.s_Swerve.resetPose(new Pose2d((FieldUtils.fieldLength/2) - 1.5, FieldUtils.fieldWidth/2, robotPose.getRotation()));
+      else
+        RobotContainer.s_Swerve.resetPose(new Pose2d((FieldUtils.fieldLength/2) + 1.5, FieldUtils.fieldWidth/2, robotPose.getRotation()));
+    }
+
+    RobotContainer.swerveState = RobotContainer.s_Swerve.getState();
+    
     CommandScheduler.getInstance().run();
+    
+    SD.STATE_HEADING.put(RobotContainer.headingState.toString());
   }
 
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
-  public void disabledInit() {}
+  public void disabledInit() 
+  {
+    RobotContainer.io_LimelightPort.setIMUMode(1);
+    RobotContainer.io_LimelightStbd.setIMUMode(1);
+
+    SD.OVERRIDE.init();
+    SD.IO_PROCESS_AUTO.init();
+
+    RobotContainer.io_copilotLeft.clearRequests();
+    RobotContainer.io_copilotRight.clearRequests();
+    RobotContainer.io_driverLeft.clearRequests();
+    RobotContainer.io_driverRight.clearRequests();
+  }
 
   @Override
-  public void disabledPeriodic() { }
+  public void disabledPeriodic()
+  {
+    SD.STATE_PP_WARMUP.put(!warmupCommand.isScheduled());
 
-  /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
+    if (SD.IO_PROCESS_AUTO.button())
+    {
+      autonomousCommand = robotContainer.getAutoCommand();
+    }
+    
+    if (!allianceKnown) 
+    {
+      if (DriverStation.getAlliance().isPresent()) 
+      {
+        allianceKnown = true;
+        allianceInit();
+      }  
+    }
+  }
+
   @Override
   public void autonomousInit() 
-  {  
-    if (FieldConstants.isRedAlliance()) 
-    {
-      robotContainer.getSwerve().gyro.setYaw(robotContainer.getSwerve().getPose().getRotation().getDegrees() + 180);
-    }
-    else 
-    {
-      robotContainer.getSwerve().gyro.setYaw(robotContainer.getSwerve().getPose().getRotation().getDegrees());
-    }
+  {     
+    RobotContainer.io_LimelightPort.setIMUMode(1);
+    RobotContainer.io_LimelightStbd.setIMUMode(1);
+
+    RobotContainer.s_Swerve.resetPose(new Pose2d(RobotContainer.swerveState.Pose.getTranslation(), new Rotation2d(Math.toRadians(RobotContainer.s_Swerve.getPigeon2().getYaw().getValueAsDouble()))));
+    
+    if (autonomousCommand == null) 
+      {autonomousCommand = robotContainer.getAutoCommand();}
+
+    if (autonomousCommand != null) 
+      {autonomousCommand.schedule();}
   }
 
-  /** This function is called periodically during autonomous. */
   @Override
-  public void autonomousPeriodic() 
+  public void autonomousPeriodic() {}
+
+  @Override
+  public void teleopInit() 
   {
+    RobotContainer.io_LimelightPort.setIMUMode(1);
+    RobotContainer.io_LimelightStbd.setIMUMode(1);
 
+    if (autonomousCommand != null) 
+      {autonomousCommand.cancel();}
+
+    RobotContainer.s_Swerve.resetPose(new Pose2d(RobotContainer.swerveState.Pose.getTranslation(), new Rotation2d(Math.toRadians(RobotContainer.s_Swerve.getPigeon2().getYaw().getValueAsDouble()))));
+
+    RobotContainer.s_Coral.setStatus(CoralManipulator.Status.DEFAULT);
+    RobotContainer.s_Algae.setStatus(AlgaeManipulator.Status.EMPTY);
+
+    RobotContainer.io_driverLeft.timedRequestCommand("Teleop Start", 1.5).schedule();
+    RobotContainer.io_driverRight.timedRequestCommand("Teleop Start", 1.5).schedule();
   }
 
-  @Override
-  public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-    if (m_autonomousCommand != null) {
-      m_autonomousCommand.cancel();
-    }
-
-  }
-
-  /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {}
 
   @Override
-  public void testInit() {
+  public void testInit() 
+  {
     // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
+    RobotContainer.io_LimelightPort.setThrottle(0);
+    RobotContainer.io_LimelightStbd.setThrottle(0);
   }
 
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {}
+
+  public static void allianceInit() 
+  {
+    ArrayList<Pair<Translation2d, Translation2d>> bargeObstacle = new ArrayList<Pair<Translation2d, Translation2d>>();
+    bargeObstacle.add(FieldUtils.isRedAlliance() ? FieldUtils.GeoFencing.redAllianceBargeDynamic : FieldUtils.GeoFencing.blueAllianceBargeDynamic);
+
+    Pathfinding.setDynamicObstacles(bargeObstacle, RobotContainer.swerveState.Pose.getTranslation());
+
+    if (DriverStation.getAlliance().get() == Alliance.Blue && !Limelight.rotationKnown) 
+      {RobotContainer.s_Swerve.getPigeon2().setYaw(180);}
+  }
 }
